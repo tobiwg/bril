@@ -1,0 +1,8 @@
+@main {
+  y: int = const 4;
+  copy1: int = const 4;
+  copy2: int = const 4;
+  copy3: int = const 4;
+ 
+  print copy3;
+}
