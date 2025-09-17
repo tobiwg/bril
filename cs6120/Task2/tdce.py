@@ -8,17 +8,16 @@ def is_pure(ins):
     return "op" in ins and "dest" in ins and ins["op"] not in EFFECT_OPS
 
 def get_used_vars(ins):
-    return ins.get("args", [])
+    vars = []
+    if "args" in ins:
+        vars.extend(ins["args"])
+    if ins.get("op") == "br" and "labels" in ins and ins.get("args"):
+        vars.append(ins["args"][0])  # condition for br
+    if "value" in ins and isinstance(ins["value"], str):
+        vars.append(ins["value"])
+    return vars
 
 def split_blocks(instrs):
-    """
-    Split instructions into basic blocks.
-    Start a block at:
-    - first instruction
-    - label
-    - targets of jmp/br
-    - instruction after jmp/br
-    """
     labels = {}
     leaders = set()
     for i, ins in enumerate(instrs):
@@ -33,7 +32,6 @@ def split_blocks(instrs):
                     leaders.add(labels[l])
             if i + 1 < len(instrs):
                 leaders.add(i + 1)
-    for i, ins in enumerate(instrs):
         if "label" in ins:
             leaders.add(i)
     leaders = sorted(leaders)
@@ -48,65 +46,71 @@ def join_blocks(blocks):
     return [ins for block in blocks for ins in block]
 
 def find_globals_used_elsewhere(blocks):
-    """
-    Determine which variables are used across blocks.
-    If a var is used in a different block than it's defined in, it's globally needed.
-    """
-    defs = {}
-    uses = {}
+    defs, uses = {}, {}
+
+    # Track uses and defs per block
     for bi, block in enumerate(blocks):
         for ins in block:
             for var in get_used_vars(ins):
                 uses.setdefault(var, set()).add(bi)
             if "dest" in ins:
                 defs.setdefault(ins["dest"], set()).add(bi)
+
     global_needed = set()
+
+    # Used in a different block than it was defined
     for var in uses:
         if var in defs:
             if not uses[var].issubset(defs[var]):
                 global_needed.add(var)
-    return global_needed.union(set(var for var in uses if var not in defs))
+
+    # Defined in multiple blocks
+    for var, def_blocks in defs.items():
+        if len(def_blocks) > 1:
+            global_needed.add(var)
+
+    # Used but never defined (e.g. function parameters)
+    for var in uses:
+        if var not in defs:
+            global_needed.add(var)
+
+    # Used in side-effectful or control-flow ops
+    for block in blocks:
+        for ins in block:
+            if ins.get("op") in EFFECT_OPS:
+                global_needed.update(get_used_vars(ins))
+
+    return global_needed
 
 def dce_block(block, global_uses):
-    live = set()
+    live, seen_defs = set(), set()
     new_block = []
-    seen_defs = set()
-
     for ins in reversed(block):
-        if "comment" in ins:
+        if "label" in ins or "comment" in ins:
             new_block.append(ins)
             continue
 
-        if "label" in ins:
+        dest = ins.get("dest")
+        used_vars = set(get_used_vars(ins))
+
+        if not is_pure(ins):  # side-effectful op
             new_block.append(ins)
+            live.update(used_vars)
             continue
 
-        if "dest" in ins and "type" in ins and is_pure(ins):
-            dest = ins["dest"]
-
-            # If it's not used in this block AND not used globally → remove
-            if dest not in live and dest not in global_uses:
-                continue
-
-            # If it's redefined later in this block before being used → remove
-            if dest not in live and dest in seen_defs:
-                continue
-
-            seen_defs.add(dest)
+        if dest in global_uses or dest in live:
+            new_block.append(ins)
+            live.update(used_vars)
             live.discard(dest)
+        elif dest in seen_defs:
             new_block.append(ins)
+            live.update(used_vars)
+            live.discard(dest)
         else:
-            new_block.append(ins)
-
-        for var in get_used_vars(ins):
-            live.add(var)
+            seen_defs.add(dest)
 
     new_block.reverse()
     return new_block
-
-
-
-
 
 def trivial_dce_func(func):
     changed = True

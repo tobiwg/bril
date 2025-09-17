@@ -4,7 +4,7 @@
 extract = 'total_dyn_inst: (\d+)'
 
 # Run every .bril benchmark (adjust the glob if your repo differs).
-benchmarks = '../benchmarks/core/*.bril'
+benchmarks = './test_suite/*.bril'
 
 # Optional: kill runaway programs (seconds).
 timeout = 5

@@ -73,8 +73,6 @@ gcd,baseline,46
 gcd,LVN,46
 catalan,baseline,659378
 catalan,LVN,659378
-pascals-row,baseline,146
-pascals-row,LVN,64
 collatz,baseline,169
 collatz,LVN,169
 sqrt_bin_search,baseline,744
@@ -83,8 +81,6 @@ rectangles-area-difference,baseline,14
 rectangles-area-difference,LVN,14
 mod_inv,baseline,558
 mod_inv,LVN,305
-reverse,baseline,46
-reverse,LVN,39
 sum-divisible-by-m,baseline,16
 sum-divisible-by-m,LVN,8
 fizz-buzz,baseline,3652

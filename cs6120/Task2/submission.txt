@@ -1,0 +1,2 @@
+We believe we deserve a Michelin since we tested over a wide range of benchmarks not written by us, and achieved up to 36.5% improvement in the Delannoy benchmark and a 14.96% overall improvement in the 45 benchmarks
+link to repo: https://github.com/tobiwg/bril/tree/main/cs6120/Task2
