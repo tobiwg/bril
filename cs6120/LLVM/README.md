@@ -39,7 +39,8 @@ At -O0, clang adds an optnone attribute that literally blocks every pass. Our DC
 Stack allocas and dead stores
 At -O0, C locals become stack variables (alloca + store). Stores have side effects, so LLVM considers them non-trivial. That’s why lines like
 
-```int b = 5; // "dead" but not trivially dead
+```
+int b = 5; // "dead" but not trivially dead
 ```
 didn’t get removed.
 → Fix: run mem2reg before our pass, so variables become SSA values. Then DCE can remove unused ones.
