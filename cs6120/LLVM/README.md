@@ -63,7 +63,7 @@ clang -O0 -S -emit-llvm \
 
 - Stack variables need mem2reg before DCE can touch them.
 
--For dead stores, pair DCE with dse.
+- For dead stores, pair DCE with dse.
 
 - -debug-pass-manager is your friend for checking if your pass actually runs.
 
