@@ -22,6 +22,7 @@ struct SimpleDCEPass : PassInfoMixin<SimpleDCEPass> {
     return Changed ? PreservedAnalyses::none() : PreservedAnalyses::all();
   }
 };
+```
 
 
 ### What didn’t work (at first)
