@@ -1,3 +1,5 @@
+Team: Adnan Al Armouti, Tobias Weinberg
+
 ##  Dead Code Elimination on LLVM
 
 For this homework, we implemented a simple Dead Code Elimination (DCE) pass using the LLVM pass manager. The goal was to delete instructions that don’t affect the program’s output — basically anything that computes a value that’s never used and has no side effects.
@@ -35,12 +37,14 @@ Fix: build and run everything using Homebrew LLVM (/opt/homebrew/opt/llvm/bin/cl
 
 2. optnone stopped all optimization
 At -O0, clang adds an optnone attribute that literally blocks every pass. Our DCE didn’t run at all until we re-emitted the IR with 
-``` -Xclang -disable-O0-optnone```
+``` 
+-Xclang -disable-O0-optnone
+```
 Stack allocas and dead stores
 At -O0, C locals become stack variables (alloca + store). Stores have side effects, so LLVM considers them non-trivial. That’s why lines like
 
 ```
-int b = 5; // "dead" but not trivially dead
+int b = 5; // "dead" 
 ```
 didn’t get removed.
 → Fix: run mem2reg before our pass, so variables become SSA values. Then DCE can remove unused ones.
@@ -69,3 +73,7 @@ clang -O0 -S -emit-llvm \
 - -debug-pass-manager is your friend for checking if your pass actually runs.
 
 Overall, once we ironed out the build and “why is nothing deleting?!” issues, the pass itself was surprisingly short and satisfying.
+
+#### GenAI disclaimer
+
+We used ChatGPT (GPT-5) to help debug toolchain problems and write shell commands for running the pass. It was great at explaining LLVM’s new pass manager and helping with CMake flags, but it often hallucinated compiler options or mixed up Apple Clang and Homebrew LLVM behavior — which caused a few confusing detours before we realized the issue was optnone all along. Once we fact-checked the suggestions and verified commands manually, it was a super useful debugging assistant — just not a substitute for actually reading LLVM’s docs.
