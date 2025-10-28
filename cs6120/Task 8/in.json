@@ -1,0 +1,28 @@
+{
+  "functions": [
+    {
+      "name": "main",
+      "instrs": [
+        { "label": "entry" },
+        { "op": "const", "type": "int", "value": 1, "dest": "one" },
+        { "op": "const", "type": "int", "value": 5, "dest": "n" },
+        { "op": "const", "type": "int", "value": 0, "dest": "zero" },
+        { "op": "jmp", "labels": ["L"] },
+
+        { "label": "L" },
+        { "op": "phi", "type": "int", "dest": "i", "labels": ["entry","L"], "args": ["zero","i1"] },
+
+       
+        { "op": "mul", "type": "int", "args": ["one","n"], "dest": "t" },
+
+        { "op": "print", "args": ["t"] },
+        { "op": "add", "type": "int", "args": ["i","one"], "dest": "i1" },
+        { "op": "lt",  "type": "bool", "args": ["i1","n"], "dest": "c" },
+        { "op": "br",  "args": ["c"], "labels": ["L","exit"] },
+
+        { "label": "exit" },
+        { "op": "ret" }
+      ]
+    }
+  ]
+}
