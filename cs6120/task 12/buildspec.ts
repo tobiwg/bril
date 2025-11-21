@@ -188,6 +188,16 @@ async function main() {
       // drop jmps in trace
       continue;
     }
+    // If the trace contains a call/ret, we cannot safely inline it into a
+    // speculative trace (the interpreter disallows calls during speculation).
+    // Conservatively synthesize a failing guard so the trace will not be used.
+    if (ins.op === "call" || ins.op === "ret") {
+      const falseName = `_spec_false_${synthCounter++}`;
+      guarded.push({ op: "const", dest: falseName, type: "bool", value: false } as any);
+      guarded.push({ op: "guard", args: [falseName], labels: [bailLabel] } as bril.Operation);
+      // stop processing the rest of the trace
+      break;
+    }
     if (ins.op === "br") {
       const condVar = ins.args?.[0];
       if (!condVar) throw new Error("br in trace without condition arg");
@@ -357,23 +367,49 @@ async function main() {
   function brilToText(prog: Program): string {
     let text = "";
     for (const func of prog.functions) {
-      text += `@${func.name} {\n`;
+      // Emit function header with arguments and return type when present.
+      let header = `@${func.name}`;
+      if (func.args && func.args.length) {
+        const argList = func.args.map((a: any) => `${a.name}: ${a.type}`).join(", ");
+        header += `(${argList})`;
+      }
+      if ((func as any).type) {
+        header += `:${(func as any).type}`;
+      }
+      text += header + ` {\n`;
       for (const instr of func.instrs) {
         if ("label" in instr) {
-          text += `${instr.label}:\n`;
+          // Emit labels with a leading dot ('.') as required by textual Bril
+          const lab = String((instr as any).label);
+          const outLab = lab.startsWith(".") ? lab : `.${lab}`;
+          text += `${outLab}:\n`;
           text += `  nop;\n`; // Ensure labels are followed by a nop
         } else {
-          const argsStr = "args" in instr && instr.args && instr.args.length ? instr.args.join(" ") : "";
           const dest = "dest" in instr && instr.dest ? `${instr.dest}: ${instr.type} = ` : "";
-          const value = instr.op === "const" && "value" in instr ? String((instr as any).value) : "";
-          const labelsStr = "labels" in instr && instr.labels && instr.labels.length ? instr.labels.join(" ") : "";
+          const op = instr.op;
+          let body = "";
 
-          const parts: string[] = [];
-          if (argsStr) parts.push(argsStr);
-          if (value) parts.push(value);
-          if (labelsStr) parts.push(labelsStr);
+          if (op === "call") {
+            // call has a funcs array with the target function name
+            const funcName = "funcs" in instr && instr.funcs && instr.funcs.length ? `@${instr.funcs[0]}` : "";
+            const args = "args" in instr && instr.args ? instr.args.join(" ") : "";
+            body = (funcName ? ` ${funcName}` : "") + (args ? ` ${args}` : "");
+          } else if (op === "ret") {
+            const args = "args" in instr && instr.args && instr.args.length ? ` ${instr.args.join(" ")}` : "";
+            body = args;
+          } else {
+            const argsStr = "args" in instr && instr.args && instr.args.length ? instr.args.join(" ") : "";
+            const value = op === "const" && "value" in instr ? String((instr as any).value) : "";
+            const labelsStr = "labels" in instr && instr.labels && instr.labels.length
+              ? instr.labels.map((l: string) => (l.startsWith(".") ? l : `.${l}`)).join(" ")
+              : "";
+            const parts: string[] = [];
+            if (argsStr) parts.push(argsStr);
+            if (value) parts.push(value);
+            if (labelsStr) parts.push(labelsStr);
+            body = parts.length ? " " + parts.join(" ") : "";
+          }
 
-          const body = parts.length ? " " + parts.join(" ") : "";
           text += `  ${dest}${instr.op}${body};\n`;
         }
       }

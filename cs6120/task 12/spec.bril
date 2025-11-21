@@ -1,7 +1,7 @@
 @main {
   speculate;
-  d: int = const 8;
-  _spec_exp_0: int = const 8;
+  d: int = const 6;
+  _spec_exp_0: int = const 6;
   _spec_cmp_1: undefined = eq d _spec_exp_0;
   guard _spec_cmp_1 .bail;
   commit;

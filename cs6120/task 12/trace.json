@@ -1,6 +1,6 @@
 {"op":"speculate"}
-{"dest":"d","op":"const","type":"int","value":8}
-{"dest":"_spec_exp_0","op":"const","type":"int","value":8}
+{"dest":"d","op":"const","type":"int","value":6}
+{"dest":"_spec_exp_0","op":"const","type":"int","value":6}
 {"args":["d","_spec_exp_0"],"dest":"_spec_cmp_1","op":"eq","type":"undefined"}
 {"args":["_spec_cmp_1"],"labels":["bail"],"op":"guard"}
 {"op":"commit"}
