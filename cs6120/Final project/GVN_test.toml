@@ -1,0 +1,23 @@
+# brench/GVN_test.toml
+
+# Grab total dynamic instructions from brili's profile output.
+extract = 'total_dyn_inst: (\d+)'
+
+# Run every .bril benchmark (adjust the glob if your repo differs).
+benchmarks = 'benchmark/*.bril'
+
+# Optional: kill runaway programs (seconds).
+timeout = 5
+
+[runs.baseline]
+pipeline = [
+  "bril2json",
+  "brili -p {args}",
+]
+
+[runs.GVN]
+pipeline = [
+  "bril2json",
+  "python3 GVN.py",
+  "brili -p {args}",
+]

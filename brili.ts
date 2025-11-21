@@ -1,6 +1,35 @@
 import * as bril from "./bril-ts/bril.ts";
 import { readStdin, unreachable } from "./bril-ts/util.ts";
 
+// Tracing configuration and helpers. Traces are buffered in-memory
+// and flushed to `trace.json` when tracing stops.
+const TRACE_FILE = "trace.json";
+const TRACE_START_ON_MAIN = true; // begin tracing at entry to `main`
+const TRACE_STOP_ON_BACKEDGE = true; // stop tracing when a backedge is taken
+const TRACE_MAX_LEN = 200; // max instructions in a trace
+
+let traceInitialized = false;
+let tracing = false;
+let traceBuffer: bril.Instruction[] = [];
+
+function startTrace() {
+  tracing = true;
+  traceBuffer = [];
+}
+
+function flushTrace() {
+  if (traceBuffer.length === 0) return;
+  const lines = traceBuffer.map((o) => JSON.stringify(o)).join("\n") + "\n";
+  if (!traceInitialized) {
+    Deno.writeTextFileSync(TRACE_FILE, lines);
+    traceInitialized = true;
+  } else {
+    Deno.writeTextFileSync(TRACE_FILE, lines, { append: true });
+  }
+  tracing = false;
+  traceBuffer = [];
+}
+
 /**
  * An interpreter error to print to the console.
  */
@@ -447,6 +476,18 @@ function evalCall(instr: bril.Operation, state: State): Action {
  * instruction or "end" to terminate the function.
  */
 function evalInstr(instr: bril.Instruction, state: State): Action {
+  // If tracing is enabled, buffer the executed instruction.
+  try {
+    if (tracing) {
+      traceBuffer.push(instr);
+      if (traceBuffer.length >= TRACE_MAX_LEN) {
+        flushTrace();
+      }
+    }
+  } catch (e) {
+    // If tracing fails, emit a console message but continue execution.
+    console.error("trace buffer failed:", e);
+  }
   state.icount += BigInt(1);
 
   // Check that we have the right number of arguments.
@@ -830,10 +871,16 @@ function evalInstr(instr: bril.Instruction, state: State): Action {
 }
 
 function evalFunc(func: bril.Function, state: State): Value | null {
+  // Optionally start tracing when entering `main`.
+  if (TRACE_START_ON_MAIN && func.name === "main") {
+    startTrace();
+  }
+
   for (let i = 0; i < func.instrs.length; ++i) {
     const line = func.instrs[i];
     if ("op" in line) {
       // Run an instruction.
+      
       const action = evalInstr(line, state);
 
       // Take the prescribed action.
@@ -880,16 +927,22 @@ function evalFunc(func: bril.Function, state: State): Value | null {
       // Move to a label.
       if ("label" in action) {
         // Search for the label and transfer control.
-        for (i = 0; i < func.instrs.length; ++i) {
-          const sLine = func.instrs[i];
+        let foundIdx = -1;
+        for (let j = 0; j < func.instrs.length; ++j) {
+          const sLine = func.instrs[j];
           if ("label" in sLine && sLine.label === action.label) {
-            --i; // Execute the label next.
+            foundIdx = j;
             break;
           }
         }
-        if (i === func.instrs.length) {
+        if (foundIdx === -1) {
           throw error(`label ${action.label} not found`);
         }
+        // If tracing and we encounter a backedge (target <= current i), stop tracing.
+        if (tracing && TRACE_STOP_ON_BACKEDGE && foundIdx <= i) {
+          flushTrace();
+        }
+        i = foundIdx - 1; // Execute the label next.
       }
     }
   }
@@ -1002,6 +1055,13 @@ function evalProg(prog: bril.Program) {
     specparent: null,
   };
   evalFunc(main, state);
+
+  // If a trace was being collected but not yet flushed, write it out.
+  try {
+    flushTrace();
+  } catch (e) {
+    console.error("failed to flush trace:", e);
+  }
 
   if (!heap.isEmpty()) {
     throw error(

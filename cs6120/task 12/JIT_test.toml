@@ -1,0 +1,27 @@
+# brench/JIT_test.toml
+
+# Grab total dynamic instructions from brili's profile output.
+extract = 'total_dyn_inst: (\d+)'
+
+# Run every .bril benchmark (adjust the glob if your repo differs).
+benchmarks = 'benchmark/*.bril'
+
+# Optional: kill runaway programs (seconds).
+timeout = 300
+
+[runs.baseline]
+pipeline = [
+  "bril2json",
+  "brili -p {args}",
+]
+
+[runs.JIT]
+pipeline = [
+  "bril2json",
+  # The following wrapper: read program JSON from stdin into a temp file,
+  # run `brili.ts` to produce `trace.json`, run `buildspec.ts` with the trace
+  # and the saved program to produce a textual spec, convert that spec to
+  # JSON via `bril2json`, and emit the JSON to stdout for the final runner.
+  "bash -lc 'tmp=$(mktemp); tmpSpec=$(mktemp); trap \"rm -f $tmp $tmpSpec\" EXIT; cat > \"$tmp\"; deno run --allow-write=trace.json brili.ts < \"$tmp\"; deno run --allow-read buildspec.ts trace.json \"$tmp\" > \"$tmpSpec\"; bril2json < \"$tmpSpec\"'",
+  "brili -p {args}",
+]
