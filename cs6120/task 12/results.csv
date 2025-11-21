@@ -18,7 +18,7 @@ rot13,JIT,incorrect
 totient,baseline,missing
 totient,JIT,missing
 fib_recursive,baseline,2693
-fib_recursive,JIT,3021
+fib_recursive,JIT,incorrect
 relative-primes,baseline,missing
 relative-primes,JIT,missing
 hanoi,baseline,99
@@ -110,9 +110,9 @@ collatz,JIT,missing
 sum-bits,baseline,missing
 sum-bits,JIT,missing
 arithmetic-series,baseline,7
-arithmetic-series,JIT,14
+arithmetic-series,JIT,17
 sqrt_bin_search,baseline,744
-sqrt_bin_search,JIT,1027
+sqrt_bin_search,JIT,1105
 mountain,baseline,missing
 mountain,JIT,missing
 rectangles-area-difference,baseline,14
